@@ -142,7 +142,7 @@ void ReadPads()
 	unsigned char ReceivedData[16];
 	
 	unsigned char ConfigStart[] = {1, 0x43, 0, 1, 0};										/*Config entry command*/
-	unsigned char ConfigStop[] = {1, 0x43, 0, 0, 0};										/*Config exit command*/
+	unsigned char ConfigStop[] = {1, 0x43, 0, 0, 0, 0, 0, 0, 0};									/*Config exit command*/
 	unsigned char ConfigAnalog[] = {1, 0x44, 0, 1, 3, 0, 0, 0, 0};					/*Permanent analog on command*/
 	unsigned char ConfigRumble[] = {1, 0x4D, 0, 0, 1, 255, 255, 255, 255};	/*Enable rumble motors*/
 	
