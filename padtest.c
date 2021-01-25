@@ -109,6 +109,9 @@ void SendData(int pad_n, unsigned char *in, unsigned char *out, int len)
 	int x;
 	int y;
 	int i;
+
+	if (!in || !out)
+		return;
 	
 	PADSIO_MODE(0) = 0x0D;
 	PADSIO_BAUD(0) = 0x88;
@@ -191,22 +194,22 @@ void ReadPads()
 				
 			case 1:
 				/*Enter configuration mode*/
-				SendData(i, ConfigStart, NULL, sizeof(ConfigStart));
+				SendData(i, ConfigStart, ReceivedData, sizeof(ConfigStart));
 				break;
 				
 			case 2:
 				/*Set auto analog mode*/
-				SendData(i, ConfigAnalog, NULL, sizeof(ConfigAnalog));
+				SendData(i, ConfigAnalog, ReceivedData, sizeof(ConfigAnalog));
 				break;
 				
 			case 3:
 				/*Configure rumble*/
-				SendData(i, ConfigRumble, NULL, sizeof(ConfigRumble));
+				SendData(i, ConfigRumble, ReceivedData, sizeof(ConfigRumble));
 				break;
 				
 			case 4:
 				/*Exit configuration mode*/
-				SendData(i, ConfigStop, NULL, sizeof(ConfigStop));
+				SendData(i, ConfigStop, ReceivedData, sizeof(ConfigStop));
 				break;
 		}
 	
