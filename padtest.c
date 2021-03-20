@@ -5,6 +5,7 @@
 
 #include <psx.h>
 #include <stdio.h>
+#include <string.h>
 
 /*Font related*/
 #include "include/fontspace.h"
@@ -12,10 +13,6 @@
 
 /*Images*/
 #include "images/buttons.h"
-
-/*Defines*/
-#define IMASK					*((unsigned int*)0x1F801074)
-#define IPENDING				*((unsigned int*)0x1F801070)
 
 /*Copied from pad.c*/
 #define PADSIO_DATA(x)	*((unsigned char*)(0x1f801040 + (x<<4)))
