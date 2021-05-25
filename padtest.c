@@ -5,6 +5,7 @@
 
 #include <psx.h>
 #include <stdio.h>
+#include <string.h>
 
 /*Font related*/
 #include "include/fontspace.h"
@@ -12,10 +13,6 @@
 
 /*Images*/
 #include "images/buttons.h"
-
-/*Defines*/
-#define IMASK					*((unsigned int*)0x1F801074)
-#define IPENDING				*((unsigned int*)0x1F801070)
 
 /*Copied from pad.c*/
 #define PADSIO_DATA(x)	*((unsigned char*)(0x1f801040 + (x<<4)))
@@ -109,6 +106,9 @@ void SendData(int pad_n, unsigned char *in, unsigned char *out, int len)
 	int x;
 	int y;
 	int i;
+
+	if (!in || !out)
+		return;
 	
 	PADSIO_MODE(0) = 0x0D;
 	PADSIO_BAUD(0) = 0x88;
@@ -142,7 +142,7 @@ void ReadPads()
 	unsigned char ReceivedData[16];
 	
 	unsigned char ConfigStart[] = {1, 0x43, 0, 1, 0};										/*Config entry command*/
-	unsigned char ConfigStop[] = {1, 0x43, 0, 0, 0};										/*Config exit command*/
+	unsigned char ConfigStop[] = {1, 0x43, 0, 0, 0, 0, 0, 0, 0};									/*Config exit command*/
 	unsigned char ConfigAnalog[] = {1, 0x44, 0, 1, 3, 0, 0, 0, 0};					/*Permanent analog on command*/
 	unsigned char ConfigRumble[] = {1, 0x4D, 0, 0, 1, 255, 255, 255, 255};	/*Enable rumble motors*/
 	
@@ -191,22 +191,22 @@ void ReadPads()
 				
 			case 1:
 				/*Enter configuration mode*/
-				SendData(i, ConfigStart, NULL, sizeof(ConfigStart));
+				SendData(i, ConfigStart, ReceivedData, sizeof(ConfigStart));
 				break;
 				
 			case 2:
 				/*Set auto analog mode*/
-				SendData(i, ConfigAnalog, NULL, sizeof(ConfigAnalog));
+				SendData(i, ConfigAnalog, ReceivedData, sizeof(ConfigAnalog));
 				break;
 				
 			case 3:
 				/*Configure rumble*/
-				SendData(i, ConfigRumble, NULL, sizeof(ConfigRumble));
+				SendData(i, ConfigRumble, ReceivedData, sizeof(ConfigRumble));
 				break;
 				
 			case 4:
 				/*Exit configuration mode*/
-				SendData(i, ConfigStop, NULL, sizeof(ConfigStop));
+				SendData(i, ConfigStop, ReceivedData, sizeof(ConfigStop));
 				break;
 		}
 	
