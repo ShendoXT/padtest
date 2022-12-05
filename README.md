@@ -1,7 +1,7 @@
 # PadTest
 ### Gamepad test application for PlayStation 1
 
-![padtestscreen](https://raw.githubusercontent.com/ShendoXT/padtest/master/images/screenshot.bmp)
+![padtestscreen](https://raw.githubusercontent.com/ShendoXT/padtest/master/images/screenshot.png)
 ## Supported controllers:
 Regular digital (SCPH-1080) and DualShock analog (SCPH-1200) controllers are supported.
 
