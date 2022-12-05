@@ -1,13 +1,13 @@
 # PadTest
 ### Gamepad test application for PlayStation 1
 
-![padtestscreen](https://cloud.githubusercontent.com/assets/8411572/20855707/b78f5b48-b900-11e6-9c68-c51571dfbf12.png)
+![padtestscreen](https://raw.githubusercontent.com/ShendoXT/padtest/master/images/screenshot.bmp)
 ## Supported controllers:
 Regular digital (SCPH-1080) and DualShock analog (SCPH-1200) controllers are supported.
 
 ## Requirements:
 * PlayStation 1 or PSone console capable of booting burned CDs.
-* Working PSXSDK toolchain to compile the software. You can download it here: http://unhaut.fav.cc/psxsdk.
+* Working PSXSDK toolchain to compile the software. You can download it here: http://unhaut.epizy.com/psxsdk/?i=1.
 
 ## License:
 There is no particular licence associated with this project, however I would like to be credited for my work.    
