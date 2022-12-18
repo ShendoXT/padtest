@@ -19,7 +19,7 @@ void InitGraphics(){
 	GsClearMem();
 	
 	/*Set video mode based on the console's region*/
-	if(*(char *)0xbfc7ff52 == 'E')	GsSetVideoMode(320, 240, VMODE_PAL);
+	if(*(char *)0xbfc7ff52 == 'E')	GsSetVideoMode(320, 256, VMODE_PAL);
 	else GsSetVideoMode(320, 240, VMODE_NTSC);
 
 	/*Load font to VRAM*/
