@@ -27,3 +27,4 @@ Since it's using direct memory access to SIO ports it may not work on emulators 
 Included in the release is a UPX compressed executable.<br>
 It is identical in functionality but is smaller (37 Kb) because it is compressed.<br>
 It can be used with FreePSXBoot and ran directly on boot as it fits on a MemoryCard.
+Make sure to use -fastload option while building the memory card image.
