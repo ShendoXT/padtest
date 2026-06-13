@@ -221,15 +221,14 @@ int IsFishingPacket(unsigned char *data)
 
 int IsFishingMode1Packet(Controller* ctrl, unsigned char *data)
 {
-	return ctrl->Type == PAD_FISHING &&
-		ctrl->FishingMode == PAD_FISHING_MODE1 &&
-		(data[1] == PAD_FISHING || data[1] == PAD_DIGITAL) &&
+	return ctrl->FishingMode == PAD_FISHING_MODE1 &&
+		data[1] == PAD_FISHING &&
 		data[2] == 0x5A;
 }
 
 void MapFishingPacket(Controller* ctrl, unsigned char *data, int mode)
 {
-	ctrl->Type = PAD_FISHING;
+	ctrl->Type = mode == PAD_FISHING_MODE2 ? PAD_FISHING : PAD_DIGITAL;
 	ctrl->FishingMode = mode;
 	ctrl->Buttons = ~((data[3] << 8) | data[4]);
 
@@ -331,20 +330,21 @@ void SendData(int pad_n, unsigned char *in, unsigned char *out, int len)
 	}
 
 	LogPadTransfer(pad_n, tx_start, rx_start, len);
-	
+
 	PADSIO_CTRL(0) = 0;
 }
 
 void ReadPad(Controller* ctrl, int pad_n)
 {
 	unsigned char DataToSend[PAD_RAW_LENGTH] =  {1, 0x42, 0, 0, 0, 0, 0, 0, 0};	/*Standard data polling command*/
-	unsigned char ReceivedData[16];
-	int PollLength = ctrl->Type == PAD_NONE ? PAD_POLL_LENGTH : PAD_DIGITAL_LENGTH;
+	unsigned char ReceivedData[PAD_RAW_LENGTH];
+	int PollLength = PAD_DIGITAL_LENGTH;
 	int RawPolling = 0;
 	int ProbeResponse = 0;
 	int ProbeHold = 0;
 	int SentProbe = 0;
 	int FishingActivationProbe = 0;
+	int NeedsExtendedPoll = 0;
 	
 	unsigned char ConfigStart[] = {1, 0x43, 0, 1, 0};						/*Config entry command*/
 	unsigned char ConfigStop[] = {1, 0x43, 0, 0, 0, 0, 0, 0, 0};			/*Config exit command*/
@@ -369,13 +369,8 @@ void ReadPad(Controller* ctrl, int pad_n)
 				break;
 			}
 
-			DataToSend[3] = ctrl->SmallMotor;
-			DataToSend[4] = ctrl->BigMotor;
-
-			if(ctrl->Type == PAD_ANALOG || ctrl->Type == PAD_MOUSE)
-			{
-				PollLength = PAD_POLL_LENGTH;
-			}
+			DataToSend[3] = 0;
+			DataToSend[4] = 0;
 
 			if(ctrl->Type == PAD_FISHING)
 			{
@@ -414,6 +409,28 @@ void ReadPad(Controller* ctrl, int pad_n)
 			/*Read button status*/
 			SendData(pad_n, DataToSend, ReceivedData, PollLength);
 			CaptureRawPadData(ctrl, ReceivedData, PollLength);
+
+			NeedsExtendedPoll =
+				!RawPolling &&
+				!FishingActivationProbe &&
+				PollLength < PAD_POLL_LENGTH &&
+				(ReceivedData[1] == PAD_ANALOG ||
+				ReceivedData[1] == PAD_MOUSE ||
+				ReceivedData[1] == PAD_NEGCON);
+
+			if(NeedsExtendedPoll)
+			{
+				if(ReceivedData[1] == PAD_ANALOG)
+				{
+					DataToSend[3] = ctrl->SmallMotor;
+					DataToSend[4] = ctrl->BigMotor;
+				}
+
+				PollLength = PAD_POLL_LENGTH;
+				memset(&ReceivedData, 0, sizeof(ReceivedData));
+				SendData(pad_n, DataToSend, ReceivedData, PollLength);
+				CaptureRawPadData(ctrl, ReceivedData, PollLength);
+			}
 
 			ctrl->RawProbe = ProbeResponse ? SentProbe : 0;
 			ctrl->RawIsProbeResponse = ProbeResponse;
@@ -491,6 +508,11 @@ void ReadPad(Controller* ctrl, int pad_n)
 				ctrl->MotionY = 0;
 				ctrl->MotionZ = 0;
 				ctrl->ReelRate = 0;
+				ctrl->NegconTwist = 0;
+				ctrl->NegconI = 0;
+				ctrl->NegconII = 0;
+				ctrl->NegconL = 0;
+				ctrl->NegconLayout = PAD_NEGCON_STANDARD;
 		
 				/*Get digital buttons*/
 				if(PollLength >= PAD_DIGITAL_LENGTH)
@@ -519,6 +541,16 @@ void ReadPad(Controller* ctrl, int pad_n)
 					ctrl->LeftStickY = ReceivedData[8] - 128;
 					ctrl->RightStickX = ReceivedData[5] - 128;
 					ctrl->RightStickY = ReceivedData[6] - 128;
+				}
+
+				/*Check if this is a NeGcon-compatible controller*/
+				if(ctrl->Type == PAD_NEGCON)
+				{
+					ctrl->NegconTwist = ReceivedData[5];
+					ctrl->NegconI = ReceivedData[6];
+					ctrl->NegconII = ReceivedData[7];
+					ctrl->NegconL = ReceivedData[8];
+					ctrl->NegconLayout = ReceivedData[0] == 0xFF ? PAD_NEGCON_ULTRA_RACER : PAD_NEGCON_STANDARD;
 				}
 
 				/*Check if this is a mouse*/
@@ -554,6 +586,7 @@ void ReadPad(Controller* ctrl, int pad_n)
 			/*Exit configuration mode*/
 			SendData(pad_n, ConfigStop, ReceivedData, sizeof(ConfigStop));
 			break;
+
 	}
 
 #ifdef RAW_PAD_DEBUG

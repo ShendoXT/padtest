@@ -39,7 +39,7 @@ The extended response is 13 meaningful bytes. Byte numbering below uses zero-bas
 | --- | --- | --- |
 | `0x01` | Response type, observed as `0xE5` | Confirmed |
 | `0x02` | Acknowledgement, observed as `0x5A` | Confirmed |
-| `0x03`/`0x04` | Digital button word, active-low style | Likely |
+| `0x03`/`0x04` | Digital button word, active-low style | Observed |
 | `0x07` | Analog stick X | Observed |
 | `0x08` | Analog stick Y | Observed |
 | `0x09` | Motion axis X | Observed |
@@ -51,21 +51,4 @@ The exact polarity of the motion axes still needs verification. The reel byte ap
 
 ## Open Questions
 
-- Does `CFG ON` need to be sent once, for multiple frames, or until a specific response is seen?
-- Is `CFGOFF` the true steady-state extended poll, or is it a side effect of config mode?
-- Are the motion bytes accelerometer axes, gyro-like values, or a mixed sensor packet?
-- Does the reel byte encode direction anywhere, or only magnitude/rate?
 - Are bytes not listed above meaningful under controls not yet isolated?
-
-## Suggested Capture Checklist
-
-For future verification, capture the extended packet while testing:
-
-- Resting controller on a flat surface.
-- Analog stick center and each extreme.
-- Rod tilt forward/back/left/right.
-- Rod swing/cast motions.
-- Reel slow forward, fast forward, and any reverse movement if mechanically possible.
-- Each digital button/control pressed alone.
-
-When sharing captures, include the command used (`CFG ON`, `CFGOFF`, etc.), response type, and full RX bytes.

@@ -413,6 +413,63 @@ void DrawFishingMode2Readout(int x, int y, Controller* ctrl)
 	DrawFishingSpeedBar(x + 4, y + 36, ctrl->ReelRate);
 }
 
+void DrawNegconDigitalValue(int x, int y, char* label, int pressed)
+{
+	char TempString[20];
+
+	DebugClearString(TempString);
+	DebugAppendString(TempString, label);
+	DebugAppendChar(TempString, ':');
+	DebugAppendChar(TempString, pressed ? '1' : '0');
+	GsPrintString(x, y, 128, 128, 128, true, TempString);
+}
+
+void DrawNegconAnalogBar(int x, int y, char* label, unsigned char value)
+{
+	char TempString[20];
+	int BarX = x + 46;
+	int BarW = 44;
+	int FillW = ((int)value * BarW) / 255;
+
+	GsPrintString(x, y, 128, 128, 128, true, label);
+	DrawBarRect(BarX, y + 2, BarW, 5, 32, 32, 32);
+	DrawBarRect(BarX, y + 2, FillW, 5, 109, 193, 99);
+
+	DebugClearString(TempString);
+	DebugAppendDec(TempString, value);
+	GsPrintString(x + 96, y, 128, 128, 128, true, TempString);
+}
+
+void DrawNegcon(int x, int y, int PadId, Controller* ctrl)
+{
+	unsigned short buttons = ctrl->Buttons;
+
+	(void)PadId;
+
+	if(ctrl->NegconLayout == PAD_NEGCON_ULTRA_RACER)
+	{
+		GsPrintString(x + 36, y + 8, 96, 96, 96, true, "Ultra Racer");
+	}
+
+	DrawNegconDigitalValue(x + 4, y + 20, "UP", buttons & PAD_UP);
+	DrawNegconDigitalValue(x + 4, y + 30, "RIGHT", buttons & PAD_RIGHT);
+	DrawNegconDigitalValue(x + 4, y + 40, "DOWN", buttons & PAD_DOWN);
+	DrawNegconDigitalValue(x + 4, y + 50, "LEFT", buttons & PAD_LEFT);
+	DrawNegconDigitalValue(x + 74, y + 20, "START", buttons & PAD_START);
+	DrawNegconDigitalValue(x + 74, y + 30, "A", buttons & PAD_CIRCLE);
+	DrawNegconDigitalValue(x + 74, y + 40, "B", buttons & PAD_TRIANGLE);
+
+	DrawNegconDigitalValue(x + 4, y + 64, "L1", buttons & PAD_L1);
+	DrawNegconDigitalValue(x + 4, y + 74, "L2", buttons & PAD_L2);
+	DrawNegconDigitalValue(x + 74, y + 64, "R1", buttons & PAD_R1);
+	DrawNegconDigitalValue(x + 74, y + 74, "R2", buttons & PAD_R2);
+
+	DrawNegconAnalogBar(x + 4, y + 92, "TWIST", ctrl->NegconTwist);
+	DrawNegconAnalogBar(x + 4, y + 106, "I", ctrl->NegconI);
+	DrawNegconAnalogBar(x + 4, y + 118, "II", ctrl->NegconII);
+	DrawNegconAnalogBar(x + 4, y + 130, "L", ctrl->NegconL);
+}
+
 void DrawRawPadByte(int x, int y, unsigned char value, unsigned char changed)
 {
 	char TempString[4];
@@ -475,6 +532,7 @@ char* GetPadLogCommandName(PadDebugLogEntry* entry)
 
 		case 0x4D:
 			return "RUMBLE";
+
 	}
 
 	return "UNKNOWN";
@@ -712,6 +770,12 @@ void DrawController(int x, int y, int PadId, Controller* ctrl)
 			DrawMouse(x, y, PadId, ctrl);
             return;
 
+		case PAD_NEGCON:
+			FontX = GetPrintedStringWidth(false, "NeGcon");
+			GsPrintString(x + 70 - (FontX/2), 56, 128, 128, 128, false, "NeGcon");
+			DrawNegcon(x, y, PadId, ctrl);
+			return;
+
 		case PAD_DIGITAL:
 			FontX = GetPrintedStringWidth(false, "ST+SL EXT POLL");
 			GsPrintString(x + 70 - (FontX/2), 46, 96, 96, 96, false, "ST+SL EXT POLL");
@@ -740,6 +804,7 @@ void DrawController(int x, int y, int PadId, Controller* ctrl)
 			StickX[1] = ctrl->RightStickX;
 			StickY[1] = ctrl->RightStickY;
 			break;
+
 	}
 	
 	PadSprite.x = x + 10;

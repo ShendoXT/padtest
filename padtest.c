@@ -6,8 +6,8 @@
 #include "include/controllers.h"
 #include "include/graphics.h"
 
-#define SOFTWARE_TITLE		"PadTest 1.1\n2022-12-05"
-#define SOFTWARE_COPYRIGHT	"Authors: Shendo, ggrtk.\nPSXSDK by Tails92."
+#define SOFTWARE_TITLE		"PadTest 1.2\n2026-06-13"
+#define SOFTWARE_COPYRIGHT	"Authors: Shendo, ggrtk, Archov.\nPSXSDK by Tails92."
 
 //#define DEBUG
 

@@ -5,6 +5,7 @@
 ## Supported controllers:
 * Digital (SCPH-1080) controller
 * DualShock analog (SCPH-1200) controller
+* NeGcon-compatible controller (`5A23h`, including Ultra Racer)
 * PlayStation Mouse
 * Fishing controller (`5AE5h`, tested with Bass Landing #8670)
 
@@ -22,6 +23,8 @@ Analog controllers should automatically switch to analog "red led mode".
 To test rumble press L3 for big motor and R3 for small motor.
 
 Fishing controllers may first appear as a Digital pad. Press `Start + Select` to poll for extended functionality. If fishing data is confirmed, PadTest displays analog stick, motion axes, and reel rotation speed.
+
+NeGcon-compatible controllers display twist plus I/II/L analog values. Ultra Racer-style devices also show their extra shoulder buttons.
 
 This software is intended to be ran on the actual PlayStation 1 or PSone console.
 Since it's using direct memory access to SIO ports it may not work on emulators or other consoles (PlayStation 2).
