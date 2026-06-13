@@ -21,10 +21,19 @@ void DrawPlus(int x, int y);
 /*Draw title bar*/
 void DrawTitle(char* softwareTitle, char* copyright);
 
+/*Update raw packet debug controls using a controller*/
+void UpdateRawPadDebugControls(Controller* ctrl, Controller* rawCtrl);
+
+/*Draw controller transaction log view*/
+void DrawPadDebugLog(int x, int y);
+
 /*Draw controller on screen with all the properties*/
 void DrawController(int x, int y, int PadId, Controller* ctrl);
 
 /*As the name implies draw mouse with all it's properties*/
 void DrawMouse(int x, int y, int PadId, Controller* ctrl);
+
+/*Draw raw controller packet data for unsupported/debug controllers*/
+void DrawRawPadDebug(int x, int y, int PadId, Controller* ctrl);
 
 #endif
