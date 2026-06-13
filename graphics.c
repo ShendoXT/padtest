@@ -8,6 +8,10 @@
 
 int dbuf = 0;
 int VBlank = 0;
+int RawPadDebugScroll = 0;
+unsigned short PrevRawPadDebugButtons = 0;
+int PrevPadDebugModeCombo = 0;
+int PadDebugLogScroll = 0;
 unsigned int PrimList[0x8000];
 
 void InitGraphics(){
@@ -95,15 +99,117 @@ void DrawTitle(char* softwareTitle, char* copyright)
 	
 	GsSortRectangle(&TopRect);
 	
-	GsPrintString(16, 16, 128, 128, 128, false, softwareTitle);
+	GsPrintString(-1, 4, 128, 128, 128, false, softwareTitle);
 	
 	FontX = GetPrintedStringWidth(false, "PORT 1");
-	GsPrintString(80 - (FontX/2), 46, 128, 128, 128, false, "PORT 1");
+	GsPrintString(16, 28, 128, 128, 128, false, "PORT 1");
 	
 	FontX = GetPrintedStringWidth(false, "PORT 2");
-	GsPrintString(240 - (FontX/2), 46, 128, 128, 128, false, "PORT 2");
+	GsPrintString(320 - FontX - 16, 28, 128, 128, 128, false, "PORT 2");
 	
-	GsPrintString(16, 210, 128, 128, 128, false, copyright);
+	if(copyright)
+	{
+		GsPrintString(16, 210, 128, 128, 128, false, copyright);
+	}
+}
+
+void UpdateRawPadDebugControls(Controller* ctrl, Controller* rawCtrl)
+{
+	unsigned short PressedButtons = 0;
+	int ModeCombo = 0;
+	int LogCount = 0;
+
+	if(ctrl->Type == PAD_NONE) return;
+
+	PressedButtons = ctrl->Buttons & ~PrevRawPadDebugButtons;
+	PrevRawPadDebugButtons = ctrl->Buttons;
+
+	ModeCombo = (ctrl->Buttons & PAD_L1) && (ctrl->Buttons & PAD_R1) && (ctrl->Buttons & PAD_TRIANGLE);
+	if(ModeCombo && !PrevPadDebugModeCombo)
+	{
+		if(GetPadDebugMode() == PAD_DEBUG_OFF)
+		{
+			SetPadDebugMode(PAD_DEBUG_RAW);
+			ResetRawPadData(rawCtrl);
+		}
+		else
+		{
+			SetPadDebugMode(PAD_DEBUG_OFF);
+		}
+
+		PadDebugLogScroll = 0;
+		PrevPadDebugModeCombo = ModeCombo;
+		return;
+	}
+	PrevPadDebugModeCombo = ModeCombo;
+
+	if(GetPadDebugMode() == PAD_DEBUG_OFF) return;
+
+	if((PressedButtons & PAD_TRIANGLE) && !ModeCombo)
+	{
+		if(IsPadDebugLogMode())
+		{
+			SetPadDebugMode(PAD_DEBUG_RAW);
+		}
+		else
+		{
+			SetPadDebugMode(PAD_DEBUG_LOG);
+			PadDebugLogScroll = 0;
+		}
+
+		return;
+	}
+
+	if(IsPadDebugLogMode())
+	{
+		LogCount = GetPadDebugLogCount();
+
+		if(PressedButtons & PAD_UP) PadDebugLogScroll--;
+		if(PressedButtons & PAD_DOWN) PadDebugLogScroll++;
+		if(PressedButtons & PAD_LEFT) PadDebugLogScroll -= 8;
+		if(PressedButtons & PAD_RIGHT) PadDebugLogScroll += 8;
+		if(PressedButtons & PAD_CROSS) ClearPadDebugLog();
+
+		if(PadDebugLogScroll < 0) PadDebugLogScroll = 0;
+		if(LogCount == 0) PadDebugLogScroll = 0;
+		else if(PadDebugLogScroll >= LogCount) PadDebugLogScroll = LogCount - 1;
+
+		return;
+	}
+
+	if(!IsPadDebugRawMode()) return;
+
+	if(PressedButtons & PAD_L1)
+	{
+		SetRawPadProbe(GetRawPadProbe() - 1);
+		ResetRawPadData(rawCtrl);
+	}
+
+	if(PressedButtons & PAD_R1)
+	{
+		SetRawPadProbe(GetRawPadProbe() + 1);
+		ResetRawPadData(rawCtrl);
+	}
+
+	if(PressedButtons & PAD_SELECT)
+	{
+		ResetRawPadData(rawCtrl);
+	}
+
+	if(PressedButtons & PAD_CROSS)
+	{
+		ResetRawPadData(rawCtrl);
+		FireRawPadProbe();
+	}
+
+	if(PressedButtons & PAD_CIRCLE)
+	{
+		ResetRawPadData(rawCtrl);
+		ToggleRawPadProbeStream();
+	}
+
+	if(RawPadDebugScroll < 0) RawPadDebugScroll = 0;
+	if(RawPadDebugScroll > 0) RawPadDebugScroll = 0;
 }
 
 void DrawMouse(int x, int y, int PadId, Controller* ctrl){
@@ -146,6 +252,419 @@ void DrawMouse(int x, int y, int PadId, Controller* ctrl){
 	DrawPlus(ctrl->CursorX, ctrl->CursorY);
 }
 
+char DebugHexChar(unsigned char value)
+{
+	value &= 0x0F;
+	return value < 10 ? '0' + value : 'A' + value - 10;
+}
+
+void DebugClearString(char* text)
+{
+	text[0] = 0;
+}
+
+void DebugAppendChar(char* text, char value)
+{
+	while(*text) text++;
+	*text++ = value;
+	*text = 0;
+}
+
+void DebugAppendString(char* text, char* value)
+{
+	while(*text) text++;
+	while(*value) *text++ = *value++;
+	*text = 0;
+}
+
+void DebugAppendHexByte(char* text, unsigned char value)
+{
+	DebugAppendChar(text, DebugHexChar(value >> 4));
+	DebugAppendChar(text, DebugHexChar(value));
+}
+
+void DebugAppendHexWord(char* text, unsigned short value)
+{
+	DebugAppendHexByte(text, value >> 8);
+	DebugAppendHexByte(text, value & 0xFF);
+}
+
+void DebugAppendDec(char* text, int value)
+{
+	char Scratch[6];
+	int pos = 0;
+
+	if(value < 0)
+	{
+		DebugAppendChar(text, '-');
+		value = -value;
+	}
+
+	if(value == 0)
+	{
+		DebugAppendChar(text, '0');
+		return;
+	}
+
+	while(value > 0 && pos < 5)
+	{
+		Scratch[pos++] = '0' + (value % 10);
+		value /= 10;
+	}
+
+	while(pos > 0) DebugAppendChar(text, Scratch[--pos]);
+}
+
+void DebugAppendDec2(char* text, int value)
+{
+	if(value < 0) value = 0;
+	if(value > 99)
+	{
+		DebugAppendDec(text, value);
+		return;
+	}
+
+	DebugAppendChar(text, '0' + (value / 10));
+	DebugAppendChar(text, '0' + (value % 10));
+}
+
+void DrawBarRect(int x, int y, int w, int h, int r, int g, int b)
+{
+	GsRectangle Rect;
+
+	if(w <= 0) return;
+
+	Rect.x = x;
+	Rect.y = y;
+	Rect.w = w;
+	Rect.h = h;
+	Rect.r = r;
+	Rect.g = g;
+	Rect.b = b;
+	Rect.attribute = 0;
+	GsSortRectangle(&Rect);
+}
+
+void DrawFishingStick(int x, int y, int StickX, int StickY, int Pressed)
+{
+	int CenterX = x + 18;
+	int CenterY = y + 18;
+	int PressedColor = Pressed ? 109 : 64;
+
+	DrawBarRect(x + 1, y + 1, 34, 34, 24, 24, 24);
+	DrawBarRect(CenterX, y + 1, 1, 34, 80, 80, 80);
+	DrawBarRect(x + 1, CenterY, 34, 1, 80, 80, 80);
+	DrawPlus(CenterX + (StickX / 8), CenterY + (StickY / 8));
+	DrawBarRect(CenterX - 2, CenterY - 2, 5, 5, PressedColor, Pressed ? 193 : 64, Pressed ? 99 : 64);
+}
+
+void DrawSignedFishingBar(int x, int y, char* label, int value)
+{
+	char TempString[20];
+	int BarX = x + 54;
+	int BarW = 62;
+	int CenterX = BarX + (BarW / 2);
+	int FillW = 0;
+
+	DebugClearString(TempString);
+	DebugAppendString(TempString, label);
+	DebugAppendChar(TempString, ':');
+	DebugAppendDec(TempString, value);
+	GsPrintString(x, y, 128, 128, 128, true, TempString);
+
+	DrawBarRect(BarX, y + 2, BarW, 5, 32, 32, 32);
+	DrawBarRect(CenterX, y + 1, 1, 7, 80, 80, 80);
+
+	if(value < 0)
+	{
+		FillW = (-value * (BarW / 2)) / 128;
+		DrawBarRect(CenterX - FillW, y + 2, FillW, 5, 109, 193, 99);
+	}
+	else
+	{
+		FillW = (value * (BarW / 2)) / 127;
+		DrawBarRect(CenterX, y + 2, FillW, 5, 109, 193, 99);
+	}
+}
+
+void DrawFishingSpeedBar(int x, int y, unsigned char value)
+{
+	char TempString[26];
+	int BarX = x + 52;
+	int BarW = 62;
+	int FillW = value > 64 ? BarW : (value * BarW) / 64;
+
+	GsPrintString(x, y, 128, 128, 128, false, "Rotation Speed");
+
+	DebugClearString(TempString);
+	DebugAppendString(TempString, "VAL:");
+	DebugAppendDec(TempString, value);
+	GsPrintString(x, y + 9, 128, 128, 128, true, TempString);
+
+	DrawBarRect(BarX, y + 11, BarW, 5, 32, 32, 32);
+	DrawBarRect(BarX, y + 11, FillW, 5, 109, 193, 99);
+}
+
+void DrawFishingMode2Readout(int x, int y, Controller* ctrl)
+{
+	DrawSignedFishingBar(x + 4, y, "X", ctrl->MotionX);
+	DrawSignedFishingBar(x + 4, y + 12, "Y", ctrl->MotionY);
+	DrawSignedFishingBar(x + 4, y + 24, "Z", ctrl->MotionZ);
+	DrawFishingSpeedBar(x + 4, y + 36, ctrl->ReelRate);
+}
+
+void DrawRawPadByte(int x, int y, unsigned char value, unsigned char changed)
+{
+	char TempString[4];
+	int Red = changed ? 109 : 128;
+	int Green = changed ? 193 : 128;
+	int Blue = changed ? 99 : 128;
+
+	DebugClearString(TempString);
+	DebugAppendHexByte(TempString, value);
+	GsPrintString(x, y, Red, Green, Blue, true, TempString);
+}
+
+void DrawRawPadByteRow(int x, int y, char* label, unsigned char* data, unsigned char* changed, int first, int len)
+{
+	char TempString[5];
+
+	GsPrintString(x, y, 128, 128, 128, true, label);
+
+	for(int col = 0; col < 4; col++)
+	{
+		int index = first + col;
+
+		if(index < len)
+		{
+			DrawRawPadByte(x + 32 + (col * 24), y, data[index], changed ? changed[index] : 0);
+		}
+		else
+		{
+			DebugClearString(TempString);
+			DebugAppendString(TempString, "--");
+			GsPrintString(x + 32 + (col * 24), y, 64, 64, 64, true, TempString);
+		}
+	}
+}
+
+char* GetPadLogCommandName(PadDebugLogEntry* entry)
+{
+	switch(entry->Command)
+	{
+		case 0x42:
+			return "POLL42";
+
+		case 0x43:
+			return entry->Tx[3] ? "CFG ON" : "CFGOFF";
+
+		case 0x44:
+			return "ANALOG";
+
+		case 0x45:
+			return "STAT45";
+
+		case 0x46:
+			return "QUERY1";
+
+		case 0x47:
+			return "QUERY2";
+
+		case 0x4C:
+			return "MODE4C";
+
+		case 0x4D:
+			return "RUMBLE";
+	}
+
+	return "UNKNOWN";
+}
+
+void DrawPadDebugLog(int x, int y)
+{
+	char TempString[64];
+	int FontX = 0;
+	int LogCount = GetPadDebugLogCount();
+	PadDebugLogEntry* Entry = GetPadDebugLogEntry(PadDebugLogScroll);
+
+	FontX = GetPrintedStringWidth(false, "Pad bus log");
+	GsPrintString(160 - (FontX/2), y, 128, 128, 128, false, "Pad bus log");
+
+	GsPrintString(x, y + 14, 128, 128, 128, true, "U/D STEP L/R PAGE");
+	GsPrintString(x, y + 22, 128, 128, 128, true, "X CLR TRI RAW");
+	GsPrintString(x, y + 30, 128, 128, 128, true, "L1+R1+TRI EXIT");
+
+	DebugClearString(TempString);
+	DebugAppendString(TempString, "ENTRY:");
+	DebugAppendDec2(TempString, LogCount ? PadDebugLogScroll + 1 : 0);
+	DebugAppendChar(TempString, '/');
+	DebugAppendDec(TempString, LogCount);
+	GsPrintString(x, y + 44, 128, 128, 128, true, TempString);
+
+	if(!Entry)
+	{
+		GsPrintString(x, y + 60, 128, 128, 128, true, "No logged transfers");
+		return;
+	}
+
+	DebugClearString(TempString);
+	DebugAppendChar(TempString, 'P');
+	DebugAppendDec(TempString, Entry->Port + 1);
+	DebugAppendString(TempString, " CMD:");
+	DebugAppendHexByte(TempString, Entry->Command);
+	DebugAppendChar(TempString, ' ');
+	DebugAppendString(TempString, GetPadLogCommandName(Entry));
+	GsPrintString(x, y + 56, 128, 128, 128, true, TempString);
+
+	DebugClearString(TempString);
+	DebugAppendString(TempString, "LEN:");
+	DebugAppendDec2(TempString, Entry->Length);
+	DebugAppendString(TempString, " RTYPE:");
+	DebugAppendHexByte(TempString, Entry->ResponseType);
+	GsPrintString(x, y + 64, 128, 128, 128, true, TempString);
+
+	GsPrintString(x, y + 80, 128, 128, 128, true, "TX");
+	for(int row = 0; row < 4; row++)
+	{
+		DebugClearString(TempString);
+		DebugAppendDec2(TempString, row * 4);
+		DebugAppendChar(TempString, ':');
+		DrawRawPadByteRow(x, y + 90 + (row * 8), TempString, Entry->Tx, 0, row * 4, Entry->Length);
+	}
+
+	GsPrintString(x, y + 132, 128, 128, 128, true, "RX");
+	for(int row = 0; row < 4; row++)
+	{
+		DebugClearString(TempString);
+		DebugAppendDec2(TempString, row * 4);
+		DebugAppendChar(TempString, ':');
+		DrawRawPadByteRow(x, y + 142 + (row * 8), TempString, Entry->Rx, 0, row * 4, Entry->Length);
+	}
+
+	GsPrintString(x + 164, y + 56, 128, 128, 128, true, "Recent");
+	for(int row = 0; row < 12; row++)
+	{
+		PadDebugLogEntry* Recent = GetPadDebugLogEntry(row);
+		if(!Recent) break;
+
+		DebugClearString(TempString);
+		DebugAppendDec2(TempString, row);
+		DebugAppendString(TempString, " P");
+		DebugAppendDec(TempString, Recent->Port + 1);
+		DebugAppendChar(TempString, ' ');
+		DebugAppendHexByte(TempString, Recent->Command);
+		DebugAppendChar(TempString, '>');
+		DebugAppendHexByte(TempString, Recent->ResponseType);
+		GsPrintString(x + 164, y + 68 + (row * 8), 128, 128, 128, true, TempString);
+	}
+}
+
+void DrawRawPadDebugHelp(int x, int y)
+{
+	int FontX = GetPrintedStringWidth(false, "Debug controls");
+
+	GsPrintString(x + 70 - (FontX/2), y, 128, 128, 128, false, "Debug controls");
+
+	GsPrintString(x + 4, y + 18, 128, 128, 128, true, "P2 CONTROLS");
+	GsPrintString(x + 4, y + 32, 128, 128, 128, true, "L1/R1 PROBE");
+	GsPrintString(x + 4, y + 44, 128, 128, 128, true, "CROSS FIRE ONCE");
+	GsPrintString(x + 4, y + 56, 128, 128, 128, true, "CIRCLE STREAM");
+	GsPrintString(x + 4, y + 68, 128, 128, 128, true, "SELECT CLR MINMAX");
+	GsPrintString(x + 4, y + 80, 128, 128, 128, true, "TRIANGLE RAW/LOG");
+	GsPrintString(x + 4, y + 92, 128, 128, 128, true, "L1+R1+TRI EXIT");
+
+	GsPrintString(x + 4, y + 116, 128, 128, 128, true, "LOG VIEW");
+	GsPrintString(x + 4, y + 130, 128, 128, 128, true, "UP/DOWN STEP");
+	GsPrintString(x + 4, y + 142, 128, 128, 128, true, "LEFT/RIGHT PAGE");
+	GsPrintString(x + 4, y + 154, 128, 128, 128, true, "CROSS CLEAR LOG");
+}
+
+void DrawRawPadDebug(int x, int y, int PadId, Controller* ctrl)
+{
+	char TempString[64];
+	int FontX = 0;
+	int ScrollY = PadId == 0 ? RawPadDebugScroll : 0;
+
+	if(PadId != 0)
+	{
+		DrawRawPadDebugHelp(x, y);
+		return;
+	}
+
+	FontX = GetPrintedStringWidth(false, "Raw debug");
+	GsPrintString(x + 70 - (FontX/2), y, 128, 128, 128, false, "Raw debug");
+	y += 10;
+
+	y -= ScrollY;
+
+	DebugClearString(TempString);
+	DebugAppendString(TempString, "SEL:");
+	DebugAppendDec(TempString, GetRawPadProbe());
+	DebugAppendChar(TempString, ' ');
+	DebugAppendString(TempString, GetRawPadProbeName());
+	GsPrintString(x + 4, y, 128, 128, 128, true, TempString);
+
+	if(ctrl->RawIsProbeResponse)
+	{
+		if(IsRawPadProbeStreamEnabled())
+		{
+			DebugClearString(TempString);
+			DebugAppendString(TempString, "SRC:STREAM");
+		}
+		else
+		{
+			DebugClearString(TempString);
+			DebugAppendString(TempString, "SRC:SHOT H:");
+			DebugAppendDec2(TempString, ctrl->RawHoldFrames);
+		}
+	}
+	else
+	{
+		DebugClearString(TempString);
+		DebugAppendString(TempString, "SRC:LIVE42");
+	}
+	GsPrintString(x + 4, y + 10, 128, 128, 128, true, TempString);
+
+	DebugClearString(TempString);
+	DebugAppendString(TempString, "TYPE:");
+	DebugAppendHexByte(TempString, ctrl->RawType);
+	DebugAppendString(TempString, " LEN:");
+	DebugAppendDec2(TempString, ctrl->RawLength);
+	GsPrintString(x + 4, y + 20, 128, 128, 128, true, TempString);
+
+	DebugClearString(TempString);
+	DebugAppendString(TempString, "BTN:");
+	DebugAppendHexWord(TempString, ctrl->Buttons);
+	GsPrintString(x + 4, y + 30, 128, 128, 128, true, TempString);
+
+	GsPrintString(x + 4, y + 42, 128, 128, 128, true, "RAW");
+	for(int row = 0; row < 4; row++)
+	{
+		DebugClearString(TempString);
+		DebugAppendDec2(TempString, row * 4);
+		DebugAppendChar(TempString, ':');
+		DrawRawPadByteRow(x + 4, y + 50 + (row * 8), TempString, ctrl->RawData, ctrl->RawChanged, row * 4, ctrl->RawLength);
+	}
+
+	GsPrintString(x + 4, y + 86, 128, 128, 128, true, "MIN");
+	for(int row = 0; row < 4; row++)
+	{
+		DebugClearString(TempString);
+		DebugAppendDec2(TempString, row * 4);
+		DebugAppendChar(TempString, ':');
+		DrawRawPadByteRow(x + 4, y + 94 + (row * 8), TempString, ctrl->RawMin, 0, row * 4, ctrl->RawLength);
+	}
+
+	GsPrintString(x + 4, y + 130, 128, 128, 128, true, "MAX");
+	for(int row = 0; row < 4; row++)
+	{
+		DebugClearString(TempString);
+		DebugAppendDec2(TempString, row * 4);
+		DebugAppendChar(TempString, ':');
+		DrawRawPadByteRow(x + 4, y + 138 + (row * 8), TempString, ctrl->RawMax, 0, row * 4, ctrl->RawLength);
+	}
+}
+
 /*Draw controller at the specified coordinates*/
 void DrawController(int x, int y, int PadId, Controller* ctrl)
 {
@@ -154,10 +673,25 @@ void DrawController(int x, int y, int PadId, Controller* ctrl)
 	int FontX = 0;
 	int PressedOffset = 0;
 	int AnalogEnabled = 0;
+	int FishingMode2 = 0;
 	unsigned short buttons = ctrl->Buttons;
 	int StickX[2] = {0, 0};
 	int StickY[2] = {0, 0};
 	char TempString[50];
+
+#ifdef RAW_PAD_DEBUG
+	if(ctrl->Type != PAD_NONE)
+	{
+		DrawRawPadDebug(x, y, PadId, ctrl);
+		return;
+	}
+#endif
+
+	if(PadId == 0 && IsPadDebugRawMode())
+	{
+		DrawRawPadDebug(x, y, PadId, ctrl);
+		return;
+	}
 	
 	/*Check what kind of controller is connected to the port*/
 	switch(ctrl->Type)
@@ -179,8 +713,22 @@ void DrawController(int x, int y, int PadId, Controller* ctrl)
             return;
 
 		case PAD_DIGITAL:
+			FontX = GetPrintedStringWidth(false, "ST+SL EXT POLL");
+			GsPrintString(x + 70 - (FontX/2), 46, 96, 96, 96, false, "ST+SL EXT POLL");
 			FontX = GetPrintedStringWidth(false, "Digital");
 			GsPrintString(x + 70 - (FontX/2), 56, 128, 128, 128, false, "Digital");
+			break;
+
+		case PAD_FISHING:
+			FontX = GetPrintedStringWidth(false, "Fishing");
+			GsPrintString(x + 70 - (FontX/2), 56, 128, 128, 128, false, "Fishing");
+
+			if(ctrl->FishingMode == PAD_FISHING_MODE2)
+			{
+				FishingMode2 = 1;
+				StickX[0] = ctrl->LeftStickX;
+				StickY[0] = ctrl->LeftStickY;
+			}
 			break;
 			
 		case PAD_ANALOG:
@@ -229,58 +777,70 @@ void DrawController(int x, int y, int PadId, Controller* ctrl)
 	else GsSortSimpleSprite(&PadSprite);
 	
 	
-	/*UP*/
-	PadSprite.u -= 32;
-	PadSprite.y += 32;
-	
-	if(buttons & PAD_UP)
+	if(FishingMode2)
 	{
-		PadSprite.u += 16;
-		GsSortSimpleSprite(&PadSprite);
-		PadSprite.u -= 16;
+		DrawFishingStick(x, y + 48, StickX[0], StickY[0], buttons & PAD_LANALOGB);
+
+		PadSprite.u = 0;
+		PadSprite.v = 48;
+		PadSprite.x = x + 20;
+		PadSprite.y = y + 58;
 	}
-	else GsSortSimpleSprite(&PadSprite);
-	
-	
-	/*LEFT*/
-	PadSprite.v += 32;
-	PadSprite.x -= 10;
-	PadSprite.y += 10;
-	
-	if(buttons & PAD_LEFT)
+	else
 	{
-		PadSprite.u += 16;
-		GsSortSimpleSprite(&PadSprite);
-		PadSprite.u -= 16;
+		/*UP*/
+		PadSprite.u -= 32;
+		PadSprite.y += 32;
+
+		if(buttons & PAD_UP)
+		{
+			PadSprite.u += 16;
+			GsSortSimpleSprite(&PadSprite);
+			PadSprite.u -= 16;
+		}
+		else GsSortSimpleSprite(&PadSprite);
+
+
+		/*LEFT*/
+		PadSprite.v += 32;
+		PadSprite.x -= 10;
+		PadSprite.y += 10;
+
+		if(buttons & PAD_LEFT)
+		{
+			PadSprite.u += 16;
+			GsSortSimpleSprite(&PadSprite);
+			PadSprite.u -= 16;
+		}
+		else GsSortSimpleSprite(&PadSprite);
+
+		/*DOWN*/
+		PadSprite.v -= 16;
+		PadSprite.x += 10;
+		PadSprite.y += 10;
+
+		if(buttons & PAD_DOWN)
+		{
+			PadSprite.u += 16;
+			GsSortSimpleSprite(&PadSprite);
+			PadSprite.u -= 16;
+		}
+		else GsSortSimpleSprite(&PadSprite);
+
+
+		/*RIGHT*/
+		PadSprite.v += 32;
+		PadSprite.x +=10;
+		PadSprite.y -= 10;
+
+		if(buttons & PAD_RIGHT)
+		{
+			PadSprite.u += 16;
+			GsSortSimpleSprite(&PadSprite);
+			PadSprite.u -= 16;
+		}
+		else GsSortSimpleSprite(&PadSprite);
 	}
-	else GsSortSimpleSprite(&PadSprite);
-	
-	/*DOWN*/
-	PadSprite.v -= 16;
-	PadSprite.x += 10;
-	PadSprite.y += 10;
-	
-	if(buttons & PAD_DOWN)
-	{
-		PadSprite.u += 16;
-		GsSortSimpleSprite(&PadSprite);
-		PadSprite.u -= 16;
-	}
-	else GsSortSimpleSprite(&PadSprite);
-	
-	
-	/*RIGHT*/
-	PadSprite.v += 32;
-	PadSprite.x +=10;
-	PadSprite.y -= 10;
-	
-	if(buttons & PAD_RIGHT)
-	{
-		PadSprite.u += 16;
-		GsSortSimpleSprite(&PadSprite);
-		PadSprite.u -= 16;
-	}
-	else GsSortSimpleSprite(&PadSprite);
 	
 	
 	/*SELECT*/
@@ -391,6 +951,12 @@ void DrawController(int x, int y, int PadId, Controller* ctrl)
 	}
 	else GsSortSimpleSprite(&PadSprite);
 	
+	if(FishingMode2)
+	{
+		DrawFishingMode2Readout(x, y + 92, ctrl);
+		return;
+	}
+
 	/*Return if this is not analog controller*/
 	if(AnalogEnabled == 0) return;
 	

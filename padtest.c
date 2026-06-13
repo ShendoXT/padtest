@@ -31,13 +31,26 @@ int main()
 	
 		GsSortCls(0,0,0);
 		
-		DrawTitle(SOFTWARE_TITLE, SOFTWARE_COPYRIGHT);
 		ReadPad(&Controllers[0], 0);
 		ReadPad(&Controllers[1], 1);
+		UpdateRawPadDebugControls(&Controllers[1], &Controllers[0]);
 
-		/*Draw controllers on the screen*/
-		DrawController(10, 65, 0, &Controllers[0]);
-		DrawController(170, 65, 1, &Controllers[1]);
+		/*Draw controllers or the active debug dashboard on the screen*/
+		if(GetPadDebugMode() == PAD_DEBUG_OFF)
+		{
+			DrawTitle(SOFTWARE_TITLE, SOFTWARE_COPYRIGHT);
+			DrawController(10, 65, 0, &Controllers[0]);
+			DrawController(170, 65, 1, &Controllers[1]);
+		}
+		else if(IsPadDebugLogMode())
+		{
+			DrawPadDebugLog(10, 4);
+		}
+		else
+		{
+			DrawRawPadDebug(10, 4, 0, &Controllers[0]);
+			DrawRawPadDebug(170, 4, 1, &Controllers[1]);
+		}
 		
 		/*Draw primitives from the list*/
 		GsDrawList();
