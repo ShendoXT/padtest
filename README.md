@@ -50,7 +50,7 @@ Bus log view controls:
 * `Cross`: clear the log.
 * `Triangle`: return to the raw packet view.
 
-The log stores the most recent 128 controller bus transactions and pauses capture while the log view is open so screenshots stay stable.
+The log stores the most recent 128 port 1 controller bus transactions and pauses capture while the log view is open so screenshots stay stable.
 
 See `docs/bass-landing-8670-protocol.md` for reverse-engineering notes on the Bass Landing #8670 and the `5AE5h` fishing controller ID.
 

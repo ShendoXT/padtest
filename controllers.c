@@ -144,6 +144,7 @@ void LogPadTransfer(int pad_n, unsigned char *tx, unsigned char *rx, int len)
 {
 	PadDebugLogEntry* entry = &PadDebugLog[PadDebugLogHead];
 
+	if(pad_n != 0) return;
 	if(PadDebugLogPaused) return;
 
 	memset(entry, 0, sizeof(PadDebugLogEntry));
