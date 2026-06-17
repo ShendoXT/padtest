@@ -16,7 +16,11 @@ RawPadProbe RawPadProbes[PAD_RAW_PROBE_COUNT] = {
 	{"STAT45", {1, 0x45, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
 	{"QUERY1", {1, 0x46, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
 	{"QUERY2", {1, 0x47, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
-	{"MODE4C", {1, 0x4C, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}}
+	{"MODE4C", {1, 0x4C, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
+	{"R40+01", {1, 0x42, 0, 0x40, 0x01, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
+	{"R40+FF", {1, 0x42, 0, 0x40, 0xFF, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
+	{"R7F+01", {1, 0x42, 0, 0x7F, 0x01, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
+	{"R7F+FF", {1, 0x42, 0, 0x7F, 0xFF, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}}
 };
 
 int RawPadProbeIndex = 0;
@@ -258,10 +262,15 @@ void StartFishingMode2Activation(Controller* ctrl, int pad_n)
 {
 	unsigned char ReceivedData[PAD_RAW_LENGTH];
 	unsigned char ConfigStart[PAD_RAW_LENGTH] = {1, 0x43, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+	unsigned char ConfigRumble[] = {1, 0x4D, 0, 255, 0, 255, 255, 255, 255};
 
 	memset(&ReceivedData, 0, sizeof(ReceivedData));
 	SendData(pad_n, ConfigStart, ReceivedData, PAD_RAW_LENGTH);
 	CaptureRawPadData(ctrl, ReceivedData, PAD_RAW_LENGTH);
+
+	memset(&ReceivedData, 0, sizeof(ReceivedData));
+	SendData(pad_n, ConfigRumble, ReceivedData, sizeof(ConfigRumble));
+	CaptureRawPadData(ctrl, ReceivedData, sizeof(ConfigRumble));
 
 	ctrl->FishingActivateFrames = PAD_FISHING_ACTIVATE_FRAMES;
 }

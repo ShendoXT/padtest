@@ -42,6 +42,7 @@ Raw packet view controls:
 * `Circle`: toggle streaming the selected probe.
 * `Select`: clear changed-byte and min/max history.
 * `Triangle`: switch to the bus log view.
+* D-pad: fire old-method `42h` rumble probes (`40/01`, `40/FF`, `7F/01`, `7F/FF`).
 
 Bus log view controls:
 

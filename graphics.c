@@ -179,6 +179,34 @@ void UpdateRawPadDebugControls(Controller* ctrl, Controller* rawCtrl)
 
 	if(!IsPadDebugRawMode()) return;
 
+	if(PressedButtons & PAD_UP)
+	{
+		SetRawPadProbe(PAD_RAW_PROBE_RUM40_01);
+		ResetRawPadData(rawCtrl);
+		FireRawPadProbe();
+	}
+
+	if(PressedButtons & PAD_RIGHT)
+	{
+		SetRawPadProbe(PAD_RAW_PROBE_RUM40_FF);
+		ResetRawPadData(rawCtrl);
+		FireRawPadProbe();
+	}
+
+	if(PressedButtons & PAD_DOWN)
+	{
+		SetRawPadProbe(PAD_RAW_PROBE_RUM7F_01);
+		ResetRawPadData(rawCtrl);
+		FireRawPadProbe();
+	}
+
+	if(PressedButtons & PAD_LEFT)
+	{
+		SetRawPadProbe(PAD_RAW_PROBE_RUM7F_FF);
+		ResetRawPadData(rawCtrl);
+		FireRawPadProbe();
+	}
+
 	if(PressedButtons & PAD_L1)
 	{
 		SetRawPadProbe(GetRawPadProbe() - 1);
@@ -631,10 +659,13 @@ void DrawRawPadDebugHelp(int x, int y)
 	GsPrintString(x + 4, y + 80, 128, 128, 128, true, "TRIANGLE RAW/LOG");
 	GsPrintString(x + 4, y + 92, 128, 128, 128, true, "L1+R1+TRI EXIT");
 
-	GsPrintString(x + 4, y + 116, 128, 128, 128, true, "LOG VIEW");
-	GsPrintString(x + 4, y + 130, 128, 128, 128, true, "UP/DOWN STEP");
-	GsPrintString(x + 4, y + 142, 128, 128, 128, true, "LEFT/RIGHT PAGE");
-	GsPrintString(x + 4, y + 154, 128, 128, 128, true, "CROSS CLEAR LOG");
+	GsPrintString(x + 4, y + 106, 128, 128, 128, true, "D-PAD RUMBLE:");
+	GsPrintString(x + 4, y + 118, 128, 128, 128, true, "U 40/01  R 40/FF");
+	GsPrintString(x + 4, y + 130, 128, 128, 128, true, "D 7F/01  L 7F/FF");
+	GsPrintString(x + 4, y + 154, 128, 128, 128, true, "LOG VIEW");
+	GsPrintString(x + 4, y + 168, 128, 128, 128, true, "UP/DOWN STEP");
+	GsPrintString(x + 4, y + 180, 128, 128, 128, true, "LEFT/RIGHT PAGE");
+	GsPrintString(x + 4, y + 192, 128, 128, 128, true, "CROSS CLEAR LOG");
 }
 
 void DrawRawPadDebug(int x, int y, int PadId, Controller* ctrl)
