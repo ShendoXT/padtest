@@ -373,6 +373,17 @@ void ReadPad(Controller* ctrl, int pad_n)
 			DataToSend[3] = 0;
 			DataToSend[4] = 0;
 
+			if(ctrl->Type == PAD_ANALOG)
+			{
+				PollLength = PAD_POLL_LENGTH;
+				DataToSend[3] = ctrl->SmallMotor;
+				DataToSend[4] = ctrl->BigMotor;
+			}
+			else if(ctrl->Type == PAD_MOUSE || ctrl->Type == PAD_NEGCON)
+			{
+				PollLength = PAD_POLL_LENGTH;
+			}
+
 			if(ctrl->Type == PAD_FISHING)
 			{
 				if(ctrl->FishingMode == PAD_FISHING_MODE2)
