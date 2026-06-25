@@ -4,13 +4,13 @@ COM_PORT = /dev/cu.usbserial-10
 BIN2H = python3 ~/Tools/bin2header.py
 
 all:
-	psx-gcc text.c graphics.c controllers.c padtest.c -o padtest.elf
+	psx-gcc -std=gnu99 text.c graphics.c controllers.c padtest.c -o padtest.elf
 	elf2exe padtest.elf padtest.exe -mark_eur
 	#upx -9 padtest.exe --force
 
 image:
 	mkdir -p cd_root
-	psx-gcc text.c graphics.c controllers.c padtest.c -o padtest.elf
+	psx-gcc -std=gnu99 text.c graphics.c controllers.c padtest.c -o padtest.elf
 	elf2exe padtest.elf padtest.exe -mark_eur
 	cp padtest.exe cd_root
 	systemcnf padtest.exe > cd_root/system.cnf
