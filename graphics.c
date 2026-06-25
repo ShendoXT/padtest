@@ -1049,6 +1049,16 @@ void DrawController(int x, int y, int PadId, Controller* ctrl)
 	
 	if(FishingMode2)
 	{
+		if(buttons & PAD_LANALOGB)
+		{
+			ctrl->BigMotor = 255;
+		}
+		else
+		{
+			ctrl->BigMotor = 0;
+		}
+
+		ctrl->SmallMotor = 0;
 		DrawFishingMode2Readout(x, y + 92, ctrl);
 		return;
 	}

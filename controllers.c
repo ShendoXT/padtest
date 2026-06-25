@@ -255,6 +255,7 @@ void MapFishingPacket(Controller* ctrl, unsigned char *data, int mode)
 		ctrl->MotionY = 0;
 		ctrl->MotionZ = 0;
 		ctrl->ReelRate = 0;
+		ctrl->FishingRumbleActive = 0;
 	}
 }
 
@@ -344,6 +345,25 @@ void SendData(int pad_n, unsigned char *in, unsigned char *out, int len)
 	PADSIO_CTRL(0) = 0;
 }
 
+void SendFishingRumble(int pad_n, int enabled)
+{
+	unsigned char ReceivedData[PAD_RAW_LENGTH];
+	unsigned char DataToSend[PAD_RAW_LENGTH];
+
+	memset(&ReceivedData, 0, sizeof(ReceivedData));
+
+	if(enabled)
+	{
+		memcpy(DataToSend, RawPadProbes[PAD_RAW_PROBE_RUM7F_FF].Data, PAD_RAW_LENGTH);
+	}
+	else
+	{
+		memcpy(DataToSend, RawPadProbes[0].Data, PAD_RAW_LENGTH);
+	}
+
+	SendData(pad_n, DataToSend, ReceivedData, PAD_RAW_LENGTH);
+}
+
 void ReadPad(Controller* ctrl, int pad_n)
 {
 	unsigned char DataToSend[PAD_RAW_LENGTH] =  {1, 0x42, 0, 0, 0, 0, 0, 0, 0};	/*Standard data polling command*/
@@ -430,6 +450,23 @@ void ReadPad(Controller* ctrl, int pad_n)
 			/*Read button status*/
 			SendData(pad_n, DataToSend, ReceivedData, PollLength);
 			CaptureRawPadData(ctrl, ReceivedData, PollLength);
+
+			if(!RawPolling &&
+				!FishingActivationProbe &&
+				ctrl->Type == PAD_FISHING &&
+				ctrl->FishingMode == PAD_FISHING_MODE2)
+			{
+				if(ctrl->BigMotor)
+				{
+					SendFishingRumble(pad_n, 1);
+					ctrl->FishingRumbleActive = 1;
+				}
+				else if(ctrl->FishingRumbleActive)
+				{
+					SendFishingRumble(pad_n, 0);
+					ctrl->FishingRumbleActive = 0;
+				}
+			}
 
 			NeedsExtendedPoll =
 				!RawPolling &&
@@ -525,6 +562,7 @@ void ReadPad(Controller* ctrl, int pad_n)
 				/*Store type*/
 				ctrl->Type = ReceivedData[1];
 				ctrl->FishingMode = 0;
+				ctrl->FishingRumbleActive = 0;
 				ctrl->MotionX = 0;
 				ctrl->MotionY = 0;
 				ctrl->MotionZ = 0;

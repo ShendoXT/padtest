@@ -74,6 +74,7 @@ typedef struct
 	unsigned char FishingMode;
 	unsigned char FishingActivateHeld;
 	unsigned char FishingActivateFrames;
+	unsigned char FishingRumbleActive;
 	unsigned char RawData[PAD_RAW_LENGTH];
 	unsigned char PrevRawData[PAD_RAW_LENGTH];
 	unsigned char RawChanged[PAD_RAW_LENGTH];
